@@ -79,11 +79,16 @@ require_once 'auth.php';
 
         <!-- Навигация -->
         <ul class="nav me-auto nav-menu">
-            <li class="nav-item"><a href="integration/1c.php" class="nav-link px-2">1С</a></li>
-            <li class="nav-item"><a href="integration/asterix.php" class="nav-link px-2">ТЕЛЕФОНИЯ</a></li>
-            <li class="nav-item"><a href="integration/metrika.php" class="nav-link px-2">МЕТРИКА</a></li>
+            <?php if (isset($_SESSION['user']) && $_SESSION['user']['role'] === 'admin'): ?>
+                <li class="nav-item"><a href="integration/1c.php" class="nav-link px-2">1С</a></li>
+            <?php endif; ?>
+            <?php if (isset($_SESSION['user']) && $_SESSION['user']['role'] === 'admin'): ?>
+                <li class="nav-item"><a href="integration/asterix.php" class="nav-link px-2">ТЕЛЕФОНИЯ</a></li>
+            <?php endif; ?>
+            <?php if (isset($_SESSION['user']) && $_SESSION['user']['role'] === 'admin'): ?>
+                <li class="nav-item"><a href="integration/metrika.php" class="nav-link px-2">МЕТРИКА</a></li>
+            <?php endif; ?>
             <li class="nav-item"><a href="integration/work_schedule.php" class="nav-link px-2">РАСПИСАНИЕ</a></li>
-
             <?php if (isset($_SESSION['user']) && $_SESSION['user']['role'] === 'admin'): ?>
                 <li class="nav-item"><a href="integration/user_admin.php" class="nav-link px-2 text-danger">УПРАВЛЕНИЕ ПОЛЬЗОВАТЕЛЯМИ</a></li>
             <?php endif; ?>
