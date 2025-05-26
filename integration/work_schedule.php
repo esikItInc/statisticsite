@@ -114,6 +114,7 @@ if ($is_admin || $is_manager) {
             <select name="department_id">
                 <option value="">Все</option>
                 <?php
+                //Выборка
                 $departments = $connect->query("SELECT id, name FROM departments ORDER BY name");
                 while ($dept = $departments->fetch_assoc()):
                     $selected = ($_GET['department_id'] ?? '') == $dept['id'] ? 'selected' : '';
