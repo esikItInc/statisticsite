@@ -1,5 +1,5 @@
-<?php
-session_start();
+<?php require_once '../auth.php';
+
 $connect = new mysqli('10.0.0.11', 'stat_user', 'statpass123', 'statistic');
 if ($connect->connect_error) die("Ошибка подключения");
 

@@ -1,6 +1,5 @@
 <?php
 session_start();
-
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $connect = new mysqli('10.0.0.11', 'stat_user', 'statpass123', 'statistic');
 

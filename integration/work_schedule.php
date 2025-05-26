@@ -1,5 +1,5 @@
 <?php
-session_start();
+require_once '../auth.php';
 
 $connect = new mysqli('10.0.0.11', 'stat_user', 'statpass123', 'statistic');
 if ($connect->connect_error) die("Ошибка подключения к БД");
@@ -29,21 +29,44 @@ if ($start_date > $end_date) {
 
 // Отдел
 $department_id = null;
-if ($is_admin || $is_manager) {
+if ($is_admin || $is_manager || $role === 'user') {
     $department_id = isset($_GET['department_id']) && is_numeric($_GET['department_id']) ? (int)$_GET['department_id'] : null;
 }
 
-// Получение сотрудников (с должностью и отделом)
-if ($is_admin || $is_manager) {
-    if ($department_id) {
+// Поиск
+$search = $_GET['search'] ?? '';
+$search = trim($search);
+
+// Получение сотрудников
+if ($department_id) {
+    $query = "
+        SELECT e.id, e.full_name, e.department_id, p.name AS position
+        FROM employees e
+        LEFT JOIN positions p ON e.position_id = p.id
+        WHERE e.department_id = ?
+    ";
+    if ($search !== '') {
+        $query .= " AND e.full_name LIKE ?";
+        $stmt = $connect->prepare($query . " ORDER BY e.full_name");
+        $likeSearch = "%" . $search . "%";
+        $stmt->bind_param("is", $department_id, $likeSearch);
+    } else {
+        $stmt = $connect->prepare($query . " ORDER BY e.full_name");
+        $stmt->bind_param("i", $department_id);
+    }
+    $stmt->execute();
+    $employees = $stmt->get_result();
+} else {
+    if ($search !== '') {
         $stmt = $connect->prepare("
             SELECT e.id, e.full_name, e.department_id, p.name AS position
             FROM employees e
             LEFT JOIN positions p ON e.position_id = p.id
-            WHERE e.department_id = ?
+            WHERE e.full_name LIKE ?
             ORDER BY e.full_name
         ");
-        $stmt->bind_param("i", $department_id);
+        $likeSearch = "%" . $search . "%";
+        $stmt->bind_param("s", $likeSearch);
         $stmt->execute();
         $employees = $stmt->get_result();
     } else {
@@ -54,16 +77,6 @@ if ($is_admin || $is_manager) {
             ORDER BY e.full_name
         ");
     }
-} else {
-    $stmt = $connect->prepare("
-        SELECT e.id, e.full_name, e.department_id, p.name AS position
-        FROM employees e
-        LEFT JOIN positions p ON e.position_id = p.id
-        WHERE e.id = ?
-    ");
-    $stmt->bind_param("i", $current_user_id);
-    $stmt->execute();
-    $employees = $stmt->get_result();
 }
 ?>
 <!DOCTYPE html>
@@ -86,7 +99,9 @@ if ($is_admin || $is_manager) {
         td.today { border: 2px solid #0078D4; background: #e7f3ff !important; }
         form { margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end; }
         label { display: flex; flex-direction: column; font-size: 13px; }
-        input[type="date"], select { padding: 6px; font-size: 14px; border: 1px solid #ccc; border-radius: 4px; }
+        input[type="date"], select, input[type="text"] {
+            padding: 6px; font-size: 14px; border: 1px solid #ccc; border-radius: 4px;
+        }
         button { padding: 8px 16px; background-color: #0078D4; color: white; border: none; border-radius: 4px; }
         .btn-back { display:inline-block; margin-bottom:20px; background:#0078D4; color:#fff; padding:8px 16px; text-decoration:none; border-radius:4px; }
     </style>
@@ -108,13 +123,12 @@ if ($is_admin || $is_manager) {
         <input type="date" name="end" value="<?= htmlspecialchars($_GET['end'] ?? '') ?>">
     </label>
 
-    <?php if ($is_admin || $is_manager): ?>
+    <?php if ($is_admin || $is_manager || $role === 'user'): ?>
         <label>
             Отдел:
             <select name="department_id">
                 <option value="">Все</option>
                 <?php
-                //Выборка
                 $departments = $connect->query("SELECT id, name FROM departments ORDER BY name");
                 while ($dept = $departments->fetch_assoc()):
                     $selected = ($_GET['department_id'] ?? '') == $dept['id'] ? 'selected' : '';
@@ -124,6 +138,11 @@ if ($is_admin || $is_manager) {
             </select>
         </label>
     <?php endif; ?>
+
+    <label>
+        Поиск по сотруднику:
+        <input type="text" name="search" placeholder="ФИО..." value="<?= htmlspecialchars($search) ?>">
+    </label>
 
     <button type="submit">Показать</button>
 </form>
@@ -163,6 +182,7 @@ if ($is_admin || $is_manager) {
                     $today_class = ($date === date('Y-m-d')) ? 'today' : '';
                     ?>
                     <td class="editable <?= $today_class ?>"
+
                         data-user="<?= $emp['id'] ?>"
                         data-date="<?= $date ?>"
                         data-department="<?= $emp_department ?>"
@@ -184,7 +204,8 @@ if ($is_admin || $is_manager) {
         const cellUserId = parseInt(cell.dataset.user);
         const cellDate = cell.dataset.date;
         const departmentId = cell.dataset.department || 0;
-        const canEdit = (userRole === 'admin' || userRole === 'manager' || currentUserId === cellUserId);
+
+        const canEdit = (userRole === 'admin' || userRole === 'manager');
         if (!canEdit) return;
 
         cell.addEventListener('click', async () => {
@@ -233,6 +254,3 @@ if ($is_admin || $is_manager) {
 
 </body>
 </html>
-
-
-
