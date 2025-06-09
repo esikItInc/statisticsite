@@ -6,6 +6,8 @@ if ($connect->connect_error) die("Ошибка подключения к БД");
 
 $role = $_SESSION['user']['role'];
 $current_user_id = $_SESSION['user']['id'];
+$current_user_department_id = $_SESSION['user']['department_id'] ?? null;
+
 $is_manager = ($role === 'manager');
 $is_admin = ($role === 'admin');
 
@@ -117,12 +119,10 @@ if ($department_id) {
         Период начала:
         <input type="date" name="start" value="<?= htmlspecialchars($_GET['start'] ?? '') ?>">
     </label>
-
     <label>
         Период окончания:
         <input type="date" name="end" value="<?= htmlspecialchars($_GET['end'] ?? '') ?>">
     </label>
-
     <?php if ($is_admin || $is_manager || $role === 'user'): ?>
         <label>
             Отдел:
@@ -138,12 +138,10 @@ if ($department_id) {
             </select>
         </label>
     <?php endif; ?>
-
     <label>
         Поиск по сотруднику:
         <input type="text" name="search" placeholder="ФИО..." value="<?= htmlspecialchars($search) ?>">
     </label>
-
     <button type="submit">Показать</button>
 </form>
 
@@ -182,7 +180,6 @@ if ($department_id) {
                     $today_class = ($date === date('Y-m-d')) ? 'today' : '';
                     ?>
                     <td class="editable <?= $today_class ?>"
-
                         data-user="<?= $emp['id'] ?>"
                         data-date="<?= $date ?>"
                         data-department="<?= $emp_department ?>"
@@ -201,42 +198,45 @@ if ($department_id) {
     document.querySelectorAll('.editable').forEach(cell => {
         const currentUserId = <?= json_encode($current_user_id) ?>;
         const userRole = <?= json_encode($role) ?>;
+        const currentDeptId = <?= json_encode($current_user_department_id) ?>;
+        const empDeptId = parseInt(cell.dataset.department);
         const cellUserId = parseInt(cell.dataset.user);
         const cellDate = cell.dataset.date;
-        const departmentId = cell.dataset.department || 0;
 
-        const canEdit = (userRole === 'admin' || userRole === 'manager');
+        const canEdit = (userRole === 'admin') || (userRole === 'manager' && currentDeptId === empDeptId);
         if (!canEdit) return;
 
         cell.addEventListener('click', async () => {
-            if (cell.querySelector('select')) return;
+            if (cell.querySelector('input')) return;
 
             const original = cell.textContent.trim();
             const userId = cell.dataset.user;
 
-            const response = await fetch('get_time_templates.php?department_id=' + departmentId);
+            const response = await fetch('get_time_templates.php?department_id=' + empDeptId);
             const templates = await response.json();
 
-            const select = document.createElement('select');
-            const defaultOption = document.createElement('option');
-            defaultOption.text = '—';
-            defaultOption.value = '';
-            select.appendChild(defaultOption);
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.value = original;
+            input.style.width = '90px';
+            input.setAttribute('list', 'list_' + userId + '_' + cellDate);
+
+            const datalist = document.createElement('datalist');
+            datalist.id = 'list_' + userId + '_' + cellDate;
 
             templates.forEach(template => {
                 const option = document.createElement('option');
                 option.value = template.time_range;
-                option.text = template.time_range;
-                if (template.time_range === original) option.selected = true;
-                select.appendChild(option);
+                datalist.appendChild(option);
             });
 
             cell.innerHTML = '';
-            cell.appendChild(select);
-            select.focus();
+            cell.appendChild(input);
+            cell.appendChild(datalist);
+            input.focus();
 
-            select.addEventListener('change', () => {
-                const comment = select.value;
+            const save = () => {
+                const comment = input.value.trim();
                 fetch('save_comment.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -245,9 +245,16 @@ if ($department_id) {
                     cell.textContent = comment;
                     cell.dataset.comment = comment;
                 });
+            };
+
+            input.addEventListener('keydown', e => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    save();
+                }
             });
 
-            select.addEventListener('change', () => select.blur());
+            input.addEventListener('blur', save);
         });
     });
 </script>

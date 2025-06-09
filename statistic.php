@@ -83,10 +83,10 @@ require_once 'auth.php';
                 <li class="nav-item"><a href="integration/1c.php" class="nav-link px-2">1С</a></li>
             <?php endif; ?>
             <?php if (isset($_SESSION['user']) && $_SESSION['user']['role'] === 'admin'): ?>
-                <li class="nav-item"><a href="integration/asterisk.php" class="nav-link px-2">ТЕЛЕФОНИЯ</a></li>
+                <li class="nav-item"><a href="integration/metrika.php" class="nav-link px-2">МЕТРИКА</a></li>
             <?php endif; ?>
             <?php if (isset($_SESSION['user']) && $_SESSION['user']['role'] === 'admin'): ?>
-                <li class="nav-item"><a href="integration/metrika.php" class="nav-link px-2">МЕТРИКА</a></li>
+                <li class="nav-item"><a href="integration/asterisk.php" class="nav-link px-2">ТЕЛЕФОНИЯ</a></li>
             <?php endif; ?>
             <li class="nav-item"><a href="integration/work_schedule.php" class="nav-link px-2">РАСПИСАНИЕ</a></li>
             <?php if (isset($_SESSION['user']) && $_SESSION['user']['role'] === 'admin'): ?>
@@ -116,7 +116,8 @@ require_once 'auth.php';
 
 <!-- Футер -->
 <div class="footer">
-    development from Малахов Е.Г
+    development from Малахов Е.Г  © 2025 [statisticsite]. Все права защищены.
+
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/js/bootstrap.bundle.min.js"></script>

@@ -1,10 +1,43 @@
 <?php
+ini_set("soap.wsdl_cache_enabled", "0");
 
+require_once '../auth.php'; // если не нужен доступ сессии — можно удалить
 
-require_once '../auth.php';
+// Простой метод для проверки связи (аналог HelloWorld)
+function HelloWorld() {
+    return "Привет из PHP SOAP!";
+}
 
+// Метод для приёма данных от 1С
+function AddSchedule($date, $time_start, $time_end, $cabinet_number, $specialist_name) {
+    // Подключение к БД
+    $connect = new mysqli('10.0.0.11', 'stat_user', 'statpass123', 'statistic');
+    if ($connect->connect_error) {
+        return "Ошибка БД: " . $connect->connect_error;
+    }
 
-echo "Раздел еще в разработке, надо немного подождать.....";
+    $stmt = $connect->prepare("
+        INSERT INTO schedule_import (date, time_start, time_end, cabinet_number, specialist_name)
+        VALUES (?, ?, ?, ?, ?)
+    ");
+    if (!$stmt) return "Ошибка подготовки запроса: " . $connect->error;
+
+    $stmt->bind_param("sssss", $date, $time_start, $time_end, $cabinet_number, $specialist_name);
+    if ($stmt->execute()) {
+        return "Успешно добавлено";
+    } else {
+        return "Ошибка при добавлении: " . $stmt->error;
+    }
+}
+
+$server = new SoapServer(null, [
+    'uri' => "http://statistic2/integration/1c.php"
+]);
+
+$server->addFunction(["HelloWorld", "AddSchedule"]);
+
+$server->handle();
+
 ?>
 <!doctype html>
 <html lang="en">
