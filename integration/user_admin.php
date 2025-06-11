@@ -231,7 +231,7 @@ $employees = $connect->query("
             <table class="table table-striped table-bordered mb-0">
                 <thead class="table-light">
                 <tr>
-                    <th>ID</th>
+
                     <th><?= $view === 'users' ? 'Логин' : 'ФИО' ?></th>
                     <?php if ($view === 'users'): ?>
                         <th>Роль</th>
@@ -246,7 +246,7 @@ $employees = $connect->query("
                 <?php if ($view === 'users'): ?>
                     <?php while ($user = $users->fetch_assoc()): ?>
                         <tr>
-                            <td><?= $user['id'] ?></td>
+
                             <td><?= htmlspecialchars($user['login']) ?></td>
                             <td><?= $user['role'] ?></td>
                             <td><?= htmlspecialchars($user['department_name'] ?? '—') ?></td>
@@ -263,7 +263,7 @@ $employees = $connect->query("
                 <?php else: ?>
                     <?php while ($emp = $employees->fetch_assoc()): ?>
                         <tr>
-                            <td><?= $emp['id'] ?></td>
+
                             <td><?= htmlspecialchars($emp['full_name']) ?></td>
                             <td><?= htmlspecialchars($emp['position_name'] ?? '—') ?></td>
                             <td><?= htmlspecialchars($emp['department_name'] ?? '—') ?></td>

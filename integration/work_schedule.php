@@ -1,6 +1,7 @@
 <?php
 require_once '../auth.php';
 
+
 $connect = new mysqli('10.0.0.11', 'stat_user', 'statpass123', 'statistic');
 if ($connect->connect_error) die("Ошибка подключения к БД");
 
@@ -145,7 +146,22 @@ if ($department_id) {
     <button type="submit">Показать</button>
 </form>
 
+<?php
+// Русские сокращения дней недели
+$days_ru = [
+    'Monday' => 'Пн',
+    'Tuesday' => 'Вт',
+    'Wednesday' => 'Ср',
+    'Thursday' => 'Чт',
+    'Friday' => 'Пт',
+    'Saturday' => 'Сб',
+    'Sunday' => 'Вс'
+];
+?>
+
+
 <?php if (!$date_error): ?>
+
     <table>
         <thead>
         <tr>
@@ -154,7 +170,14 @@ if ($department_id) {
                 <th><?= date('d.m', strtotime($date)) ?></th>
             <?php endforeach; ?>
         </tr>
+        <tr>
+            <th class="sticky">День</th>
+            <?php foreach ($dates as $date): ?>
+                <th><?= $days_ru[date('l', strtotime($date))] ?? '' ?></th>
+            <?php endforeach; ?>
+        </tr>
         </thead>
+
         <tbody>
         <?php while ($emp = $employees->fetch_assoc()): ?>
             <tr>
@@ -192,6 +215,7 @@ if ($department_id) {
         <?php endwhile; ?>
         </tbody>
     </table>
+
 <?php endif; ?>
 
 <script>
