@@ -1,7 +1,6 @@
 <?php
 require_once '../auth.php';
 
-
 $connect = new mysqli('10.0.0.11', 'stat_user', 'statpass123', 'statistic');
 if ($connect->connect_error) die("Ошибка подключения к БД");
 
@@ -94,12 +93,12 @@ if ($department_id) {
         th.sticky, td.sticky { position: sticky; left: 0; background: #f1f1f1; z-index: 3; }
         th { position: sticky; top: 0; background: #f0f0f0; }
         td.editable { background: #fcfcfc; cursor: pointer; }
-        td.editable:hover { background: #eef5ff; }
-        td[data-comment="О"] { background-color: #fdecea; }
-        td[data-comment="Б"] { background-color: #fef4d2; }
-        td[data-comment="П"] { background-color: #d6f5e3; }
-        td[data-comment="Д"] { background-color: #e2f0fb; }
         td.today { border: 2px solid #0078D4; background: #e7f3ff !important; }
+
+        .status-holiday { background-color: #ffe6e6 !important; }
+        .status-work { background-color: #d9f7d6 !important; }
+        .status-empty { background-color: #fff7cc !important; }
+
         form { margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end; }
         label { display: flex; flex-direction: column; font-size: 13px; }
         input[type="date"], select, input[type="text"] {
@@ -112,21 +111,23 @@ if ($department_id) {
 <body>
 
 <a href="/statistic.php" class="btn-back">🏠 Вернуться на главную</a>
-
+<!-- Легенда -->
+<div style="margin-top: 20px; font-size: 13px;">
+    <span style="background-color: #ffe6e6; padding: 4px 8px; border: 1px solid #ccc;">Отпуск / Выходной / Больничный</span>
+    <span style="background-color: #d9f7d6; padding: 4px 8px; border: 1px solid #ccc;">Рабочее время</span>
+    <span style="background-color: #fff7cc; padding: 4px 8px; border: 1px solid #ccc;">Не заполнено</span>
+</div>
 <h2><?= $date_error ? 'Некорректно выбраны даты' : 'Табель — ' . strftime('%B %Y', strtotime($dates[0])) ?></h2>
 
 <form method="get">
-    <label>
-        Период начала:
+    <label>Период начала:
         <input type="date" name="start" value="<?= htmlspecialchars($_GET['start'] ?? '') ?>">
     </label>
-    <label>
-        Период окончания:
+    <label>Период окончания:
         <input type="date" name="end" value="<?= htmlspecialchars($_GET['end'] ?? '') ?>">
     </label>
     <?php if ($is_admin || $is_manager || $role === 'user'): ?>
-        <label>
-            Отдел:
+        <label>Отдел:
             <select name="department_id">
                 <option value="">Все</option>
                 <?php
@@ -139,29 +140,20 @@ if ($department_id) {
             </select>
         </label>
     <?php endif; ?>
-    <label>
-        Поиск по сотруднику:
+    <label>Поиск по сотруднику:
         <input type="text" name="search" placeholder="ФИО..." value="<?= htmlspecialchars($search) ?>">
     </label>
     <button type="submit">Показать</button>
 </form>
 
 <?php
-// Русские сокращения дней недели
 $days_ru = [
-    'Monday' => 'Пн',
-    'Tuesday' => 'Вт',
-    'Wednesday' => 'Ср',
-    'Thursday' => 'Чт',
-    'Friday' => 'Пт',
-    'Saturday' => 'Сб',
-    'Sunday' => 'Вс'
+    'Monday' => 'Пн', 'Tuesday' => 'Вт', 'Wednesday' => 'Ср',
+    'Thursday' => 'Чт', 'Friday' => 'Пт', 'Saturday' => 'Сб', 'Sunday' => 'Вс'
 ];
 ?>
 
-
 <?php if (!$date_error): ?>
-
     <table>
         <thead>
         <tr>
@@ -177,7 +169,6 @@ $days_ru = [
             <?php endforeach; ?>
         </tr>
         </thead>
-
         <tbody>
         <?php while ($emp = $employees->fetch_assoc()): ?>
             <tr>
@@ -186,7 +177,6 @@ $days_ru = [
                     <small style="color:gray;"><?= htmlspecialchars($emp['position'] ?? '—') ?></small>
                 </td>
                 <?php
-                $emp_department = $emp['department_id'] ?? 0;
                 foreach ($dates as $date):
                     $comment = '';
                     $stmt = $connect->prepare("SELECT comment FROM work_schedule WHERE employee_id = ? AND date = ?");
@@ -200,12 +190,21 @@ $days_ru = [
                         $stmt->close();
                     }
 
+                    $comment_trimmed = mb_strtolower(trim($comment));
+                    if (in_array($comment_trimmed, ['отпуск', 'выходной', 'больничный'])) {
+                        $status_class = 'status-holiday';
+                    } elseif ($comment_trimmed !== '') {
+                        $status_class = 'status-work';
+                    } else {
+                        $status_class = 'status-empty';
+                    }
+
                     $today_class = ($date === date('Y-m-d')) ? 'today' : '';
                     ?>
-                    <td class="editable <?= $today_class ?>"
+                    <td class="editable <?= $today_class ?> <?= $status_class ?>"
                         data-user="<?= $emp['id'] ?>"
                         data-date="<?= $date ?>"
-                        data-department="<?= $emp_department ?>"
+                        data-department="<?= $emp['department_id'] ?>"
                         data-comment="<?= htmlspecialchars($comment) ?>"
                         title="<?= htmlspecialchars($emp['position'] ?? '') ?>">
                         <?= htmlspecialchars($comment ?? '') ?>
@@ -216,72 +215,8 @@ $days_ru = [
         </tbody>
     </table>
 
+
 <?php endif; ?>
-
-<script>
-    document.querySelectorAll('.editable').forEach(cell => {
-        const currentUserId = <?= json_encode($current_user_id) ?>;
-        const userRole = <?= json_encode($role) ?>;
-        const currentDeptId = <?= json_encode($current_user_department_id) ?>;
-        const empDeptId = parseInt(cell.dataset.department);
-        const cellUserId = parseInt(cell.dataset.user);
-        const cellDate = cell.dataset.date;
-
-        const canEdit = (userRole === 'admin') || (userRole === 'manager' && currentDeptId === empDeptId);
-        if (!canEdit) return;
-
-        cell.addEventListener('click', async () => {
-            if (cell.querySelector('input')) return;
-
-            const original = cell.textContent.trim();
-            const userId = cell.dataset.user;
-
-            const response = await fetch('get_time_templates.php?department_id=' + empDeptId);
-            const templates = await response.json();
-
-            const input = document.createElement('input');
-            input.type = 'text';
-            input.value = original;
-            input.style.width = '90px';
-            input.setAttribute('list', 'list_' + userId + '_' + cellDate);
-
-            const datalist = document.createElement('datalist');
-            datalist.id = 'list_' + userId + '_' + cellDate;
-
-            templates.forEach(template => {
-                const option = document.createElement('option');
-                option.value = template.time_range;
-                datalist.appendChild(option);
-            });
-
-            cell.innerHTML = '';
-            cell.appendChild(input);
-            cell.appendChild(datalist);
-            input.focus();
-
-            const save = () => {
-                const comment = input.value.trim();
-                fetch('save_comment.php', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: `employee_id=${userId}&date=${cellDate}&comment=${encodeURIComponent(comment)}`
-                }).then(() => {
-                    cell.textContent = comment;
-                    cell.dataset.comment = comment;
-                });
-            };
-
-            input.addEventListener('keydown', e => {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    save();
-                }
-            });
-
-            input.addEventListener('blur', save);
-        });
-    });
-</script>
 
 </body>
 </html>
